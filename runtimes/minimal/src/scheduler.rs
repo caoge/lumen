@@ -20,21 +20,24 @@ use liblumen_core::locks::{Mutex, RwLock};
 use liblumen_core::util::thread_local::ThreadLocalCell;
 
 use liblumen_alloc::atom;
+use liblumen_alloc::erts::apply;
 use liblumen_alloc::erts::exception::{AllocResult, SystemException};
+use liblumen_alloc::erts::process::alloc;
 use liblumen_alloc::erts::process::{CalleeSavedRegisters, Priority, Process, Status};
 use liblumen_alloc::erts::scheduler::{id, ID};
 use liblumen_alloc::erts::term::prelude::*;
 use liblumen_alloc::erts::ModuleFunctionArity;
-use liblumen_alloc::erts::{apply, process};
 
 use lumen_rt_core as rt_core;
 use lumen_rt_core::process::{log_exit, propagate_exit, CURRENT_PROCESS};
 use lumen_rt_core::scheduler::Scheduler as SchedulerTrait;
 use lumen_rt_core::scheduler::{self, run_queue, set_unregistered, unregister, Run};
 pub use lumen_rt_core::scheduler::{
-    current, from_id, run_through, spawn_apply_3, spawn_code, SchedulerDependentAlloc, Spawned,
+    current, from_id, run_through, SchedulerDependentAlloc, Spawned,
 };
 use lumen_rt_core::timer::Hierarchy;
+
+use crate::process;
 
 const MAX_REDUCTION_COUNT: u32 = 20;
 
@@ -51,9 +54,6 @@ pub fn scheduler_stop_waiting(process: &Process) {
     }
 }
 
-#[derive(Copy, Clone)]
-struct StackPointer(*mut u64);
-
 #[export_name = "__lumen_builtin_spawn"]
 pub extern "C" fn builtin_spawn(to: Term, msg: Term) -> Term {
     unimplemented!()
@@ -68,26 +68,6 @@ pub unsafe extern "C" fn process_yield() -> bool {
         .downcast_ref::<Scheduler>()
         .unwrap()
         .process_yield(/* is_root= */ false)
-}
-
-#[naked]
-#[inline(never)]
-#[cfg(all(unix, target_arch = "x86_64"))]
-pub unsafe extern "C" fn process_return_continuation() {
-    let f: fn() -> () = process_return;
-    llvm_asm!("
-        callq *$0
-        "
-    :
-    : "r"(f)
-    :
-    : "volatile", "alignstack"
-    );
-}
-
-#[inline(never)]
-fn process_return() {
-    do_process_return(scheduler::current().as_any().downcast_ref().unwrap());
 }
 
 #[export_name = "__lumen_builtin_malloc"]
@@ -135,25 +115,6 @@ pub unsafe extern "C" fn builtin_malloc(kind: u32, arity: usize) -> *mut u8 {
     }
 
     ptr::null_mut()
-}
-
-/// Called when the current process has finished executing, and has
-/// returned all the way to its entry function. This marks the process
-/// as exiting (if it wasn't already), and then yields to the scheduler
-fn do_process_return(scheduler: &Scheduler) -> bool {
-    use liblumen_alloc::erts::term::prelude::*;
-    if scheduler.current.pid() != scheduler.root.pid() {
-        scheduler
-            .current
-            .exit(atom!("normal"), anyhow!("Out of code").into());
-        // NOTE: We always set root=false here, even though this can
-        // be called from the root process, since returning from the
-        // root process exits the scheduler loop anyway, so no stack
-        // swapping can occur
-        scheduler.process_yield(/* root= */ false)
-    } else {
-        true
-    }
 }
 
 fn unregistered() -> Arc<dyn lumen_rt_core::scheduler::Scheduler> {
@@ -299,6 +260,7 @@ impl SchedulerTrait for Scheduler {
             process.scheduler_id(),
             "process is already scheduled here!"
         );
+        assert_eq!(*process.status.read(), Status::Runnable);
 
         process.schedule_with(self.id);
 
@@ -316,8 +278,8 @@ impl SchedulerTrait for Scheduler {
         // and is responsible for starting/stopping the system in Erlang.
         //
         // If this process exits, the scheduler terminates
-        let init_heap_size = process::alloc::next_heap_size(minimum_heap_size);
-        let init_heap = process::alloc::heap(init_heap_size)?;
+        let init_heap_size = alloc::next_heap_size(minimum_heap_size);
+        let init_heap = alloc::heap(init_heap_size)?;
         let init = Arc::new(Process::new_with_stack(
             Priority::Normal,
             None,
@@ -420,6 +382,24 @@ impl Scheduler {
         }
     }
 
+    /// Called when the current process has finished executing, and has
+    /// returned all the way to its entry function. This marks the process
+    /// as exiting (if it wasn't already), and then yields to the scheduler
+    pub fn process_return(&self) -> bool {
+        use liblumen_alloc::erts::term::prelude::*;
+        if self.current.pid() != self.root.pid() {
+            self.current
+                .exit(atom!("normal"), anyhow!("Out of code").into());
+            // NOTE: We always set root=false here, even though this can
+            // be called from the root process, since returning from the
+            // root process exits the scheduler loop anyway, so no stack
+            // swapping can occur
+            self.process_yield(/* root= */ false)
+        } else {
+            true
+        }
+    }
+
     /// This function takes care of coordinating the scheduling of a new
     /// process/descheduling of the current process.
     ///
@@ -432,8 +412,9 @@ impl Scheduler {
     /// at which point execution resumes where the newly scheduled process left
     /// off previously, or in its init function.
     unsafe fn swap_process(&self, new: Arc<Process>, is_root: bool) {
+        let new_registers = new.registers.lock();
         // Mark the new process as Running
-        let new_ctx = &new.registers as *const _;
+        let new_ctx = &*new_registers as *const _;
         {
             let mut new_status = new.status.write();
             *new_status = Status::Running;
@@ -465,7 +446,7 @@ impl Scheduler {
         // If the process is exiting, then handle the exit, otherwise
         // proceed to the stack swap
         if let Some(exiting) = self.run_queues.write().requeue(prev) {
-            if let Status::Exiting(ref ex) = *exiting.status.read() {
+            if let Status::RuntimeException(ref ex) = *exiting.status.read() {
                 log_exit(&exiting, ex);
                 propagate_exit(&exiting, ex);
             } else {
@@ -528,12 +509,6 @@ impl Scheduler {
         }
         let init_fn = init_fn_result.unwrap();
 
-        #[inline(always)]
-        unsafe fn push(sp: &mut StackPointer, value: u64) {
-            sp.0 = sp.0.offset(-1);
-            ptr::write(sp.0, value);
-        }
-
         // Write the return function and init function to the end of the stack,
         // when execution resumes, the pointer before the stack pointer will be
         // used as the return address - the first time that will be the init function.
@@ -543,19 +518,15 @@ impl Scheduler {
         // the process exited. The nature of the exit is indicated by error state
         // in the process itself
         unsafe {
-            let mut sp = StackPointer(process.stack.top as *mut u64);
+            let mut stack = process.stack.lock();
+            let mut registers = process.registers.lock();
             // Function that will be called when returning from init_fn
-            push(&mut sp, process_return_continuation as u64);
+            stack.push64(process::return_continuation as u64);
             // Function that the newly spawned process should call first
-            push(&mut sp, init_fn as u64);
-            // Update process stack pointer
-            let s_top = &process.stack.top as *const _ as *mut _;
-            ptr::write(s_top, sp.0 as *const u8);
-            // Update rsp
-            let rsp = &process.registers.rsp as *const u64 as *mut _;
-            ptr::write(rsp, sp.0 as u64);
-            let rbp = &process.registers.rbp as *const u64 as *mut _;
-            ptr::write(rbp, sp.0 as u64);
+            stack.push64(init_fn as u64);
+
+            registers.rsp = stack.top as u64;
+            registers.rbp = stack.top as u64;
         }
 
         *process.status.write() = Status::Runnable;
