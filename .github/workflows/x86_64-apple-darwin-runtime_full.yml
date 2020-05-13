@@ -1,9 +1,9 @@
-name: macOS x86_64 Libraries
+name: x86_64-apple-darwin Runtime Full
 
 on: push
 
 jobs:
-  libraries:
+  runtime:
     runs-on: macos-latest
 
     steps:
@@ -26,20 +26,23 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ runner.os }}-libraries-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-runtime-full-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
           path: ~/.cargo/git
-          key: ${{ runner.os }}-libraries-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-runtime-full-cargo-index-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo build
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-libraries-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-      - name: Test liblumen_arena
-        run: cargo test --package liblumen_arena
-      - name: Test liblumen_core
-        run: cargo test --package liblumen_core
-      - name: Test liblumen_alloc
-        run: cargo test --package liblumen_alloc
+          key: ${{ runner.os }}-runtime-full-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Test lumen_rt_full
+        run: cargo test --package lumen_rt_full
+      - name: Test liblumen_otp with runtime_full
+        working-directory: native_implemented_functions/otp
+        run: cargo test --features runtime_full
+      - name: Test interpreter
+        run: cargo test --package lumen_interpreter
+      - name: Test spawn-chain example
+        run: cargo test --package spawn-chain

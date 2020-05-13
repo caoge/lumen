@@ -1,17 +1,17 @@
-name: macOS x86_64 compiler
+name: x86_64-apple-darwin Runtime Minimal
 
 on: push
 
 jobs:
-  compiler:
+  runtime:
     runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install nightly-2020-05-13
+      - name: Install nightly-2020-03-10
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2020-05-13
+          toolchain: nightly-2020-03-10
           override: true
       - name: Install LLVM
         run: |
@@ -26,24 +26,19 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ runner.os }}-compiler-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-runtime-minimal-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
           path: ~/.cargo/git
-          key: ${{ runner.os }}-compiler-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-runtime-minimal-cargo-index-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo build
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ runner.os }}-compiler-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install Ninja
-        run: brew install ninja
-      - name: Make Build
-        env:
-          RUST_BACKTRACE: full
-        run: make build
-      - name: Test liblumen_alloc
-        run: cargo test --package liblumen_alloc
-      - name: Lumen Test
-        run: cargo test -p lumen
+          key: ${{ runner.os }}-runtime-minimal-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Test lumen_rt_minimal
+        run: cargo test --package lumen_rt_minimal
+      - name: Test liblumen_otp with runtime_minimal
+        working-directory: native_implemented_functions/otp
+        run: cargo test --features runtime_minimal
