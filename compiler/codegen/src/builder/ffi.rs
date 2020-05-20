@@ -45,8 +45,8 @@ impl Default for Span {
         Self { start: 0, end: 0 }
     }
 }
-impl From<libeir_diagnostics::ByteSpan> for Span {
-    fn from(span: libeir_diagnostics::ByteSpan) -> Span {
+impl From<libeir_diagnostics::SourceSpan> for Span {
+    fn from(span: libeir_diagnostics::SourceSpan) -> Span {
         Self {
             start: span.start().to_usize() as u32,
             end: span.end().to_usize() as u32,

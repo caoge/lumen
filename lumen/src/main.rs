@@ -2,9 +2,12 @@ extern crate log;
 
 use std::env;
 use std::process;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use anyhow::{anyhow, bail};
+
+use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 
 use liblumen_compiler::{self as driver, argparser};
 use liblumen_session::ShowOptionGroupHelp;
@@ -44,8 +47,19 @@ pub fn main() -> anyhow::Result<()> {
     // Get current working directory
     let cwd = env::current_dir().map_err(|e| anyhow!("Current directory is invalid: {}", e))?;
 
+    let color_choice = ColorChoice::Auto;
+    let output_writer = Arc::new(Mutex::new(StandardStream::stdout(color_choice)));
+    let error_writer = Arc::new(Mutex::new(StandardStream::stderr(color_choice)));
+    let emit_config = Default::default();
+
     // Run compiler
-    if let Err(err) = driver::run_compiler(cwd, env::args_os()) {
+    if let Err(err) = driver::run_compiler_with_emitter(
+        cwd,
+        env::args_os(),
+        output_writer,
+        error_writer,
+        emit_config,
+    ) {
         if let Some(err) = err.downcast_ref::<HelpRequested>() {
             handle_help(err);
         }

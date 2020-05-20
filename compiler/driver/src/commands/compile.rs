@@ -1,6 +1,6 @@
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
 
@@ -8,9 +8,12 @@ use anyhow::anyhow;
 
 use clap::ArgMatches;
 
+use codespan_reporting::term::termcolor::WriteColor;
+use codespan_reporting::term::Config;
+
 use log::debug;
 
-use libeir_diagnostics::{CodeMap, Emitter};
+use libeir_diagnostics::CodeMap;
 
 use liblumen_codegen as codegen;
 use liblumen_codegen::linker::{self, LinkerInfo};
@@ -27,14 +30,22 @@ pub fn handle_command<'a>(
     z_opts: DebuggingOptions,
     matches: &ArgMatches<'a>,
     cwd: PathBuf,
-    emitter: Option<Arc<dyn Emitter>>,
+    output_writer: Arc<Mutex<dyn WriteColor>>,
+    error_writer: Arc<Mutex<dyn WriteColor>>,
+    emit_config: Arc<Config>,
 ) -> anyhow::Result<()> {
     // Extract options from provided arguments
     let options = Options::new(c_opts, z_opts, cwd, &matches)?;
     // Construct empty code map for use in compilation
-    let codemap = Arc::new(RwLock::new(CodeMap::new()));
+    let codemap: Arc<CodeMap> = Default::default();
     // Set up diagnostics
-    let diagnostics = create_diagnostics_handler(&options, codemap.clone(), emitter);
+    let diagnostics = create_diagnostics_handler(
+        &options,
+        codemap.clone(),
+        output_writer,
+        error_writer,
+        emit_config,
+    );
 
     // Initialize codegen backend
     codegen::init(&options)?;
@@ -70,7 +81,9 @@ pub fn handle_command<'a>(
                 if result.is_err() {
                     let diagnostics = snapshot.diagnostics();
                     let input_info = snapshot.lookup_intern_input(input);
-                    diagnostics.failed("Failed", input_info.source_name());
+                    diagnostics
+                        .failed("Failed", input_info.source_name())
+                        .unwrap();
                 }
                 result
             })
@@ -121,14 +134,16 @@ pub fn handle_command<'a>(
     // Link all compiled objects
     let diagnostics = db.diagnostics();
     if let Err(err) = linker::link_binary(&options, &diagnostics, &codegen_results) {
-        diagnostics.error(err);
+        diagnostics.error(err).unwrap();
         return Err(anyhow!("failed to link binary"));
     }
 
     let duration = HumanDuration::since(start);
-    diagnostics.success(
-        "Finished",
-        &format!("built {} in {:#}", options.project_name, duration),
-    );
+    diagnostics
+        .success(
+            "Finished",
+            &format!("built {} in {:#}", options.project_name, duration),
+        )
+        .unwrap();
     Ok(())
 }

@@ -18,7 +18,7 @@ use crate::compiler::query_groups::*;
 macro_rules! to_query_result {
     ($db:expr, $val:expr) => {
         $val.map_err(|e| {
-            $db.diagnostics().error(e);
+            $db.diagnostics().error(e).unwrap();
             ()
         })?
     };
@@ -84,14 +84,18 @@ where
     let options = db.options();
     debug!("generating mlir for {:?} on {:?}", input, thread_id);
     let target_machine = db.get_target_machine(thread_id);
-    let filemap = {
-        let codemap = db.codemap().read().unwrap();
-        codemap
-            .find_file(module.span().start())
-            .map(|fm| fm.clone())
-            .expect("expected input to have corresponding entry in code map")
-    };
-    match codegen::builder::build(&module, filemap, &context, &options, target_machine.deref()) {
+    let source_file = db
+        .codemap()
+        .get(module.span().source_id())
+        .map(|fm| fm.clone())
+        .expect("expected input to have corresponding entry in code map");
+    match codegen::builder::build(
+        &module,
+        source_file,
+        &context,
+        &options,
+        target_machine.deref(),
+    ) {
         Ok(GeneratedModule {
             module: mlir_module,
             atoms,
@@ -103,7 +107,7 @@ where
             Ok(Arc::new(mlir_module))
         }
         Err(err) => {
-            db.diagnostics().error(err);
+            db.diagnostics().error(err).unwrap();
             Err(())
         }
     }
@@ -130,7 +134,8 @@ where
         InputType::Unknown(None) => {
             debug!("unknown input type for {:?} on {:?}", input, thread_id);
             db.diagnostics()
-                .error(anyhow!("invalid input, expected .erl or .mlir"));
+                .error(anyhow!("invalid input, expected .erl or .mlir"))
+                .unwrap();
             Err(())
         }
         InputType::Unknown(Some(ref ext)) => {
@@ -138,10 +143,12 @@ where
                 "unsupported input type '{}' for {:?} on {:?}",
                 ext, input, thread_id
             );
-            db.diagnostics().error(anyhow!(
-                "invalid input extension ({}), expected .erl or .mlir",
-                ext
-            ));
+            db.diagnostics()
+                .error(anyhow!(
+                    "invalid input extension ({}), expected .erl or .mlir",
+                    ext
+                ))
+                .unwrap();
             Err(())
         }
     }
@@ -241,7 +248,7 @@ where
     let source_name = input_info.source_name();
     let diagnostics = db.diagnostics();
 
-    diagnostics.success("Compiling", &source_name);
+    diagnostics.success("Compiling", &source_name).unwrap();
     debug!(
         "compiling {:?} ({:?}) on thread {:?}",
         input, &input_info, thread_id
@@ -283,7 +290,7 @@ where
     ));
 
     debug!("compilation finished for {:?}", input);
-    diagnostics.success("Compiled", &source_name);
+    diagnostics.success("Compiled", &source_name).unwrap();
     Ok(compiled)
 }
 

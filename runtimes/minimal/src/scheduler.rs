@@ -154,11 +154,11 @@ impl Scheduler {
         let root = Arc::new(Process::new(
             Priority::Normal,
             None,
-            Arc::new(ModuleFunctionArity {
+            ModuleFunctionArity {
                 module: Atom::from_str("root"),
                 function: Atom::from_str("init"),
                 arity: 0,
-            }),
+            },
             ptr::null_mut(),
             0,
         ));
@@ -169,11 +169,11 @@ impl Scheduler {
         let init = Arc::new(Process::new(
             Priority::Normal,
             None,
-            Arc::new(ModuleFunctionArity {
+            ModuleFunctionArity {
                 module: Atom::from_str("undef"),
                 function: Atom::from_str("undef"),
                 arity: 0,
-            }),
+            },
             ptr::null_mut(),
             0,
         ));

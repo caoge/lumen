@@ -3,8 +3,9 @@ mod queries;
 mod query_groups;
 
 use std::collections::HashSet;
+use std::io;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 use log::debug;
 
@@ -30,12 +31,12 @@ use self::prelude::*;
 pub struct CompilerDatabase {
     runtime: salsa::Runtime<CompilerDatabase>,
     diagnostics: DiagnosticsHandler,
-    codemap: Arc<RwLock<CodeMap>>,
+    codemap: Arc<CodeMap>,
     atoms: Arc<Mutex<HashSet<Symbol>>>,
     symbols: Arc<Mutex<HashSet<FunctionSymbol>>>,
 }
 impl CompilerDatabase {
-    pub fn new(codemap: Arc<RwLock<CodeMap>>, diagnostics: DiagnosticsHandler) -> Self {
+    pub fn new(codemap: Arc<CodeMap>, diagnostics: DiagnosticsHandler) -> Self {
         let mut atoms = HashSet::default();
         atoms.insert(Symbol::intern("false"));
         atoms.insert(Symbol::intern("true"));
@@ -74,11 +75,11 @@ impl ParserDatabaseBase for CompilerDatabase {
         &self.diagnostics
     }
 
-    fn diagnostic(&self, diagnostic: &Diagnostic) {
-        self.diagnostics.diagnostic(diagnostic);
+    fn diagnostic(&self, diagnostic: &Diagnostic) -> io::Result<()> {
+        self.diagnostics.diagnostic(diagnostic)
     }
 
-    fn codemap(&self) -> &Arc<RwLock<CodeMap>> {
+    fn codemap(&self) -> &Arc<CodeMap> {
         &self.codemap
     }
 

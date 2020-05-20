@@ -43,10 +43,12 @@ where
         &FileName::Virtual(ref name) if name == "-" => {
             let mut source = String::new();
             if io::stdin().read_to_string(&mut source).is_err() {
-                db.diagnostics().io_error(IoError::new(
-                    IoErrorKind::InvalidData,
-                    "couldn't read from stdin, invalid UTF-8",
-                ));
+                db.diagnostics()
+                    .io_error(IoError::new(
+                        IoErrorKind::InvalidData,
+                        "couldn't read from stdin, invalid UTF-8",
+                    ))
+                    .unwrap();
                 return Err(());
             }
             let input = Input::new(name.clone(), source);
@@ -63,18 +65,22 @@ where
         &FileName::Real(ref path) if path.exists() && path.is_dir() => find_sources(db, path),
         // Invalid virtual file
         &FileName::Virtual(_) => {
-            db.diagnostics().io_error(IoError::new(
-                IoErrorKind::InvalidInput,
-                "invalid input file, expected `-`, a file path, or a directory",
-            ));
+            db.diagnostics()
+                .io_error(IoError::new(
+                    IoErrorKind::InvalidInput,
+                    "invalid input file, expected `-`, a file path, or a directory",
+                ))
+                .unwrap();
             Err(())
         }
         // Invalid file/directory path
         &FileName::Real(_) => {
-            db.diagnostics().io_error(IoError::new(
-                IoErrorKind::InvalidInput,
-                "invalid input file, not a file or directory",
-            ));
+            db.diagnostics()
+                .io_error(IoError::new(
+                    IoErrorKind::InvalidInput,
+                    "invalid input file, not a file or directory",
+                ))
+                .unwrap();
             Err(())
         }
     }
@@ -109,22 +115,21 @@ where
     use libeir_frontend::eir::EirFrontend;
     use libeir_frontend::erlang::ErlangFrontend;
 
+    let codemap = db.codemap().clone();
     let frontend: AnyFrontend = match db.input_type(input) {
-        InputType::Erlang => ErlangFrontend::new(db.parse_config()).into(),
-        InputType::AbstractErlang => AbstrErlangFrontend::new().into(),
-        InputType::EIR => EirFrontend::new().into(),
+        InputType::Erlang => ErlangFrontend::new(db.parse_config(), codemap).into(),
+        InputType::AbstractErlang => AbstrErlangFrontend::new(codemap).into(),
+        InputType::EIR => EirFrontend::new(codemap).into(),
         _ => unreachable!(),
     };
 
-    let codemap = db.codemap().clone();
-
     let (result, diags) = match db.lookup_intern_input(input) {
-        Input::File(ref path) => frontend.parse_file_dyn(codemap, path),
-        Input::Str { ref input, .. } => frontend.parse_string_dyn(codemap, input),
+        Input::File(ref path) => frontend.parse_file_dyn(path),
+        Input::Str { ref input, .. } => frontend.parse_string_dyn(input),
     };
 
     for ref diagnostic in diags.iter() {
-        db.diagnostic(diagnostic);
+        db.diagnostic(diagnostic).unwrap();
     }
 
     match result {
@@ -195,7 +200,7 @@ where
             }
             Ok(_) => continue,
             Err(err) => {
-                db.diagnostics().error_str(&err.to_string());
+                db.diagnostics().error_str(&err.to_string()).unwrap();
                 has_errors = true;
             }
         }

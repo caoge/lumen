@@ -3,8 +3,6 @@ use std::sync::Arc;
 
 use clap::ArgMatches;
 
-use libeir_diagnostics::Emitter;
-
 use liblumen_codegen as codegen;
 use liblumen_llvm as llvm;
 use liblumen_session::{CodegenOptions, DebuggingOptions, Options};
@@ -13,12 +11,14 @@ use liblumen_target::{self as target, Target};
 use crate::commands::*;
 
 /// The main entry point for the 'print' command
-pub fn handle_command<'a>(
+pub fn handle_command(
     c_opts: CodegenOptions,
     z_opts: DebuggingOptions,
-    matches: &ArgMatches<'a>,
+    matches: &ArgMatches,
     cwd: PathBuf,
-    emitter: Option<Arc<dyn Emitter>>,
+    output_writer: Arc<Mutex<dyn WriteColor>>,
+    error_writer: Arc<Mutex<dyn WriteColor>>,
+    emit_config: Arc<Config>,
 ) -> anyhow::Result<()> {
     match matches.subcommand() {
         ("version", subcommand_matches) => {
@@ -47,14 +47,16 @@ pub fn handle_command<'a>(
         ("target-features", subcommand_matches) => {
             let options =
                 Options::new_with_defaults(c_opts, z_opts, cwd, subcommand_matches.unwrap())?;
-            let diagnostics = default_diagnostics_handler(&options, emitter);
+            let diagnostics =
+                default_diagnostics_handler(&options, output_writer, error_writer, emit_config);
             codegen::init(&options)?;
             llvm::target::print_target_features(&options, &diagnostics);
         }
         ("target-cpus", subcommand_matches) => {
             let options =
                 Options::new_with_defaults(c_opts, z_opts, cwd, subcommand_matches.unwrap())?;
-            let diagnostics = default_diagnostics_handler(&options, emitter);
+            let diagnostics =
+                default_diagnostics_handler(&options, output_writer, error_writer, emit_config);
             codegen::init(&options)?;
             llvm::target::print_target_cpus(&options, &diagnostics);
         }

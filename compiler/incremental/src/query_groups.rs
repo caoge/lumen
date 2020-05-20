@@ -1,5 +1,6 @@
+use std::io;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use liblumen_session::IRModule;
 use liblumen_session::{DiagnosticsHandler, Emit, Input, InputType, Options, OutputType};
@@ -45,11 +46,11 @@ pub trait InternerDatabase: salsa::Database {
 pub trait ParserDatabaseBase: InternerDatabase {
     fn diagnostics(&self) -> &DiagnosticsHandler;
 
-    fn diagnostic(&self, diag: &Diagnostic) {
-        self.diagnostics().diagnostic(diag);
+    fn diagnostic(&self, diagnostic: &Diagnostic) -> io::Result<()> {
+        self.diagnostics().diagnostic(diagnostic)
     }
 
-    fn codemap(&self) -> &Arc<RwLock<CodeMap>>;
+    fn codemap(&self) -> &Arc<CodeMap>;
 
     fn maybe_emit_file<E>(&self, input: InternedInput, emit: &E) -> QueryResult<Option<PathBuf>>
     where
@@ -91,12 +92,12 @@ pub trait ParserDatabaseBase: InternerDatabase {
 
         match File::create(outfile.as_path()) {
             Err(err) => {
-                self.diagnostics().io_error(err);
+                self.diagnostics().io_error(err).unwrap();
                 Err(())
             }
             Ok(mut f) => {
                 if let Err(err) = callback(&mut f) {
-                    self.diagnostics().error(err);
+                    self.diagnostics().error(err).unwrap();
                     return Err(());
                 }
                 Ok(outfile)

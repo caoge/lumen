@@ -1,49 +1,42 @@
 pub(crate) mod compile;
 pub(crate) mod print;
 
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
-use libeir_diagnostics::{CodeMap, Emitter};
+use codespan_reporting::term::termcolor::WriteColor;
+use codespan_reporting::term::Config;
+
+use libeir_diagnostics::CodeMap;
 
 use liblumen_session::{DiagnosticsConfig, DiagnosticsHandler, Options};
 
 pub(super) fn default_diagnostics_handler(
     options: &Options,
-    emitter: Option<Arc<dyn Emitter>>,
+    output_writer: Arc<Mutex<dyn WriteColor>>,
+    error_writer: Arc<Mutex<dyn WriteColor>>,
+    emit_config: Arc<Config>,
 ) -> DiagnosticsHandler {
-    let codemap = Arc::new(RwLock::new(CodeMap::new()));
-    create_diagnostics_handler(options, codemap, emitter)
+    create_diagnostics_handler(
+        options,
+        Default::default(),
+        output_writer,
+        error_writer,
+        emit_config,
+    )
 }
 
 pub(super) fn create_diagnostics_handler(
     options: &Options,
-    codemap: Arc<RwLock<CodeMap>>,
-    emitter: Option<Arc<dyn Emitter>>,
+    codemap: Arc<CodeMap>,
+    output_writer: Arc<Mutex<dyn WriteColor>>,
+    error_writer: Arc<Mutex<dyn WriteColor>>,
+    emit_config: Arc<Config>,
 ) -> DiagnosticsHandler {
-    let emitter = emitter.unwrap_or_else(|| default_emitter(codemap.clone(), &options));
     let config = DiagnosticsConfig {
         warnings_as_errors: options.warnings_as_errors,
         no_warn: options.no_warn,
     };
-    DiagnosticsHandler::new(config, codemap, emitter)
-}
-
-pub(super) fn default_emitter(
-    codemap: Arc<RwLock<CodeMap>>,
-    options: &Options,
-) -> Arc<dyn Emitter> {
-    use libeir_diagnostics::{NullEmitter, StandardStreamEmitter};
-    use liblumen_session::verbosity_to_severity;
-    use liblumen_util::error::Verbosity;
-
-    match options.verbosity {
-        Verbosity::Silent => Arc::new(NullEmitter::new()),
-        v => Arc::new(
-            StandardStreamEmitter::new(options.use_color.into())
-                .set_codemap(codemap)
-                .set_min_severity(verbosity_to_severity(v)),
-        ),
-    }
+    DiagnosticsHandler::new(config, codemap, output_writer, error_writer, emit_config)
 }
 
 pub(super) fn abort_on_err<T>(_: ()) -> T {

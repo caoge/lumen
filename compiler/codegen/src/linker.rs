@@ -419,7 +419,8 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn control_flow_guard(&mut self) {
         self.diagnostics
-            .warn("Windows Control Flow Guard is not supported by this linker.");
+            .warn("Windows Control Flow Guard is not supported by this linker.")
+            .unwrap();
     }
 
     fn debuginfo(&mut self) {
@@ -755,7 +756,8 @@ impl<'a> Linker for MsvcLinker<'a> {
                     }
                     Err(err) => {
                         self.diagnostics
-                            .warn(&format!("error enumerating natvis directory: {}", err));
+                            .warn(&format!("error enumerating natvis directory: {}", err))
+                            .unwrap();
                     }
                 }
             }
@@ -943,7 +945,8 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn control_flow_guard(&mut self) {
         self.diagnostics
-            .warn("Windows Control Flow Guard is not supported by this linker.");
+            .warn("Windows Control Flow Guard is not supported by this linker.")
+            .unwrap();
     }
 
     fn debuginfo(&mut self) {
@@ -1180,7 +1183,8 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn control_flow_guard(&mut self) {
         self.diagnostics
-            .warn("Windows Control Flow Guard is not supported by this linker.");
+            .warn("Windows Control Flow Guard is not supported by this linker.")
+            .unwrap();
     }
 
     fn no_default_libraries(&mut self) {}
@@ -1320,7 +1324,8 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn control_flow_guard(&mut self) {
         self.diagnostics
-            .warn("Windows Control Flow Guard is not supported by this linker.");
+            .warn("Windows Control Flow Guard is not supported by this linker.")
+            .unwrap();
     }
 
     fn build_dylib(&mut self, _out_filename: &Path) {}

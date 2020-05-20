@@ -4,7 +4,7 @@ mod compiler;
 mod driver;
 pub(crate) mod task;
 
-pub use self::driver::{run_compiler, run_compiler_with_emitter};
+pub use self::driver::run_compiler_with_emitter;
 
 use clap::crate_version;
 

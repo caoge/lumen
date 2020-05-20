@@ -17,8 +17,10 @@ use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
 use clap::ArgMatches;
+use codespan_reporting::term::ColorArg;
+use termcolor::ColorChoice;
 
-use libeir_diagnostics::{ColorChoice, FileName, UseColors};
+use libeir_diagnostics::FileName;
 use liblumen_target::{self as target, Target};
 use liblumen_util::error::{HelpRequested, Verbosity};
 use liblumen_util::fs::NativeLibraryKind;
@@ -46,7 +48,7 @@ pub struct Options {
     pub project_name: String,
     pub project_type: ProjectType,
     pub output_types: OutputTypes,
-    pub use_color: UseColors,
+    pub color_choice: ColorChoice,
     pub warnings_as_errors: bool,
     pub no_warn: bool,
     pub verbosity: Verbosity,
@@ -113,7 +115,7 @@ impl Options {
             ParseOption::parse_option(&option!("project-type"), &args)?;
         let project_type = project_type_opt.unwrap_or(ProjectType::Executable);
         let output_types = OutputTypes::parse_option(&option!("emit"), &args)?;
-        let use_color = UseColors::parse_option(&option!("color"), &args)?;
+        let color_choice = ColorArg::parse_option(&option!("color"), &args)?.into();
 
         let maybe_sysroot: Option<PathBuf> = ParseOption::parse_option(&option!("sysroot"), &args)?;
         let sysroot = match &maybe_sysroot {
@@ -231,7 +233,7 @@ impl Options {
             project_name,
             project_type,
             output_types,
-            use_color,
+            color_choice,
             warnings_as_errors,
             no_warn,
             verbosity,
@@ -309,7 +311,7 @@ impl Options {
             project_name,
             project_type: ProjectType::Executable,
             output_types: OutputTypes::default(),
-            use_color: UseColors(ColorChoice::Auto),
+            color_choice: ColorChoice::Auto,
             warnings_as_errors: false,
             no_warn: false,
             verbosity: Verbosity::from_level(0),

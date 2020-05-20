@@ -9,7 +9,7 @@ use anyhow::anyhow;
 
 use log::debug;
 
-use libeir_diagnostics::{ByteIndex, FileMap};
+use libeir_diagnostics::{ByteIndex, SourceFile};
 use libeir_intern::{Ident, Symbol};
 use libeir_ir as ir;
 use libeir_ir::{AtomTerm, AtomicTerm, ConstKind, FunctionIdent};
@@ -161,7 +161,7 @@ impl<'a, 'm, 'f> FunctionBuilder<'a, 'm, 'f> {
         func.set_escape_continuation(esc, init_block);
 
         Ok(ScopedFunctionBuilder {
-            filemap: self.builder.filemap().clone(),
+            source_file: self.builder.source_file().clone(),
             filename: self.builder.filename().as_ptr(),
             func,
             eir,
@@ -182,7 +182,7 @@ impl<'a, 'm, 'f> FunctionBuilder<'a, 'm, 'f> {
 /// function using the ScopedFunctionBuilder.
 pub struct ScopedFunctionBuilder<'f, 'o> {
     filename: *const libc::c_char,
-    filemap: Arc<FileMap>,
+    source_file: Arc<SourceFile>,
     func: Function,
     eir: &'f ir::Function,
     mlir: FunctionOpRef,
@@ -221,11 +221,11 @@ impl<'f, 'o> ScopedFunctionBuilder<'f, 'o> {
     pub(super) fn debug(&self, _message: &str) {}
 
     fn location(&self, index: ByteIndex) -> Option<SourceLocation> {
-        let (li, ci) = self.filemap.location(index).ok()?;
+        let location = self.source_file.location(index).ok()?;
         Some(SourceLocation {
             filename: self.filename,
-            line: li.number().to_usize() as u32,
-            column: ci.number().to_usize() as u32,
+            line: location.line.to_usize() as u32,
+            column: location.column.to_usize() as u32,
         })
     }
 }
@@ -335,7 +335,7 @@ impl<'f, 'o> ScopedFunctionBuilder<'f, 'o> {
         if let Some(locs) = self.eir.value_locations(ir_value) {
             let mut fused = Vec::with_capacity(locs.len());
             for loc in locs.iter().copied() {
-                if let Some(sc) = self.location(loc.start()) {
+                if let Some(sc) = self.location(loc.start_index()) {
                     fused.push(unsafe { MLIRCreateLocation(self.builder, sc) });
                 }
             }
@@ -613,14 +613,14 @@ impl<'f, 'o> ScopedFunctionBuilder<'f, 'o> {
         }
 
         let loc = {
-            let (li, ci) = self
-                .filemap
-                .location(self.func.span.start())
+            let location = self
+                .source_file
+                .location(self.func.span.start_index())
                 .expect("expected source span for function");
             let loc = SourceLocation {
                 filename: self.filename,
-                line: li.number().to_usize() as u32,
-                column: ci.number().to_usize() as u32,
+                line: location.line.to_usize() as u32,
+                column: location.column.to_usize() as u32,
             };
             unsafe { MLIRCreateLocation(self.builder, loc) }
         };
