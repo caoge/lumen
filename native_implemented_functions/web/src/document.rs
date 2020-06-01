@@ -25,20 +25,27 @@ fn module_id() -> usize {
 }
 
 fn document_from_term(term: Term) -> Result<&'static Document, exception::Exception> {
+    web_sys::console::log_1(&format!("{}:{} term = {:?}", file!(), line!(), term).into());
     let boxed: Boxed<Resource> = term
         .try_into()
         .with_context(|| format!("{} must be a document resource", term))?;
     let document_reference: Resource = boxed.into();
+    web_sys::console::log_1(&format!("{}:{}", file!(), line!()).into());
 
     match document_reference.downcast_ref() {
         Some(document) => {
+            web_sys::console::log_1(&format!("{}:{}", file!(), line!()).into());
             let static_document: &'static Document =
                 unsafe { mem::transmute::<&Document, _>(document) };
+            web_sys::console::log_1(&format!("{}:{}", file!(), line!()).into());
 
             Ok(static_document)
         }
-        None => Err(TypeError)
-            .with_context(|| format!("{} is a resource, but not a document", term))
-            .map_err(From::from),
+        None => {
+            web_sys::console::log_1(&format!("{}:{}", file!(), line!()).into());
+            Err(TypeError)
+                .with_context(|| format!("{} is a resource, but not a document", term))
+                .map_err(From::from)
+        },
     }
 }

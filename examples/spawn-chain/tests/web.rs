@@ -24,30 +24,30 @@ mod run {
 
     use spawn_chain::run;
 
-    #[wasm_bindgen_test(async)]
-    fn with_1() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(1)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_2() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(2)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_4() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(4)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_8() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(8)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_16() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(16)
-    }
+    // #[wasm_bindgen_test(async)]
+    // fn with_1() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(1)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_2() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(2)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_4() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(4)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_8() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(8)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_16() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(16)
+    // }
 
     fn eq_in_the_future(n: usize) -> impl Future<Item = (), Error = JsValue> {
         super::eq_in_the_future(run, n)
@@ -59,30 +59,30 @@ mod log_to_console {
 
     use spawn_chain::log_to_console;
 
-    #[wasm_bindgen_test(async)]
-    fn with_1() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(1)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_2() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(2)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_4() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(4)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_8() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(8)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_16() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(16)
-    }
+    // #[wasm_bindgen_test(async)]
+    // fn with_1() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(1)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_2() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(2)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_4() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(4)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_8() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(8)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_16() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(16)
+    // }
 
     fn eq_in_the_future(n: usize) -> impl Future<Item = (), Error = JsValue> {
         super::eq_in_the_future(log_to_console, n)
@@ -94,30 +94,30 @@ mod log_to_dom {
 
     use spawn_chain::log_to_dom;
 
-    #[wasm_bindgen_test(async)]
-    fn with_1() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(1)
-    }
-
+    // #[wasm_bindgen_test(async)]
+    // fn with_1() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(1)
+    // }
+    //
     #[wasm_bindgen_test(async)]
     fn with_2() -> impl Future<Item = (), Error = JsValue> {
         eq_in_the_future(2)
     }
 
-    #[wasm_bindgen_test(async)]
-    fn with_4() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(4)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_8() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(8)
-    }
-
-    #[wasm_bindgen_test(async)]
-    fn with_16() -> impl Future<Item = (), Error = JsValue> {
-        eq_in_the_future(16)
-    }
+    // #[wasm_bindgen_test(async)]
+    // fn with_4() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(4)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_8() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(8)
+    // }
+    //
+    // #[wasm_bindgen_test(async)]
+    // fn with_16() -> impl Future<Item = (), Error = JsValue> {
+    //     eq_in_the_future(16)
+    // }
 
     fn eq_in_the_future(n: usize) -> impl Future<Item = (), Error = JsValue> {
         super::eq_in_the_future(log_to_dom, n)

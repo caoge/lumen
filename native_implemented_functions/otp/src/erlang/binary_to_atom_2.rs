@@ -6,7 +6,7 @@ use liblumen_alloc::erts::exception;
 use liblumen_alloc::erts::string::Encoding;
 use liblumen_alloc::erts::term::prelude::*;
 
-use native_implemented_function::native_implemented_function;
+
 
 use crate::runtime::context::*;
 
@@ -37,7 +37,7 @@ macro_rules! maybe_aligned_maybe_binary_to_atom {
     };
 }
 
-#[native_implemented_function(binary_to_atom / 2)]
+#[native_implemented::function(binary_to_atom / 2)]
 pub fn result(binary: Term, encoding: Term) -> exception::Result<Term> {
     let _: Encoding = encoding.try_into()?;
 

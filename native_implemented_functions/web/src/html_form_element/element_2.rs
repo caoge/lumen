@@ -14,13 +14,13 @@ use liblumen_alloc::erts::exception;
 use liblumen_alloc::erts::process::Process;
 use liblumen_alloc::erts::term::prelude::*;
 
-use native_implemented_function::native_implemented_function;
+
 
 use lumen_rt_full::binary_to_string::binary_to_string;
 
 use crate::html_form_element;
 
-#[native_implemented_function(element/2)]
+#[native_implemented::function(element/2)]
 fn result(process: &Process, html_form_element_term: Term, name: Term) -> exception::Result<Term> {
     let html_form_element_term = html_form_element::from_term(html_form_element_term)?;
     let name_string: String = binary_to_string(name)?;

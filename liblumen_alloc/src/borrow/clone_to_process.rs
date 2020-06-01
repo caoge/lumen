@@ -32,7 +32,7 @@ pub trait CloneToProcess: Debug {
             Ok(term) => term,
             Err(_) => {
                 drop(heap);
-                let (term, mut frag) = self.clone_to_fragment().unwrap();
+                let (term, mut frag) = self.clone_to_fragment().unwrap_or_else(|_| panic!("Could not clone {:?} to a fragment", self));
                 process.attach_fragment(unsafe { frag.as_mut() });
                 term
             }

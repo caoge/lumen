@@ -1,5 +1,6 @@
 use anyhow::*;
 
+use liblumen_alloc::atom;
 use liblumen_alloc::erts::exception;
 use liblumen_alloc::erts::process::Process;
 use liblumen_alloc::erts::term::prelude::*;
@@ -10,11 +11,11 @@ pub fn new(first: Term, last: Term, process: &Process) -> exception::Result<Term
             process
                 .map_from_slice(&[
                     (
-                        Atom::str_to_term("__struct__"),
-                        Atom::str_to_term("Elixir.Range"),
+                        atom!("__struct__"),
+                        atom!("Elixir.Range"),
                     ),
-                    (Atom::str_to_term("first"), first),
-                    (Atom::str_to_term("last"), last),
+                    (atom!("first"), first),
+                    (atom!("last"), last),
                 ])
                 .map_err(From::from)
         } else {

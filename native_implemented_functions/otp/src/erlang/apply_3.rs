@@ -9,7 +9,7 @@ use liblumen_core::locks::RwLock;
 use liblumen_core::symbols::FunctionSymbol;
 use liblumen_core::sys::dynamic_call::DynamicCallee;
 
-use liblumen_alloc::erts::apply::find_symbol;
+use liblumen_alloc::erts::apply::{find_symbol, dump_symbols};
 use liblumen_alloc::erts::exception::{self, ArcError};
 use liblumen_alloc::erts::process::{Frame, FrameWithArguments, Native};
 use liblumen_alloc::erts::term::prelude::*;
@@ -106,22 +106,26 @@ pub extern "C" fn native(module: Term, function: Term, argument_list: Term) -> T
 
             Term::NONE
         }
-        None => undef(
-            module,
-            function,
-            argument_list,
-            anyhow!(
+        None => {
+            dump_symbols();
+
+            undef(
+                module,
+                function,
+                argument_list,
+                anyhow!(
                 ":{}.{}/{} is not exported",
                 module_atom.name(),
                 function_atom.name(),
                 arity
             )
-            .into(),
-        ),
+                    .into(),
+            )
+        },
     }
 }
 
-fn frame() -> Frame {
+pub fn frame() -> Frame {
     Frame::new(module_function_arity(), Native::Three(get_native()))
 }
 

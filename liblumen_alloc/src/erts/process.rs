@@ -12,6 +12,7 @@ pub mod priority;
 
 use core::any::Any;
 use core::cell::RefCell;
+use core::convert::TryInto;
 use core::ffi::c_void;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -1180,6 +1181,8 @@ impl Process {
             arguments.push(argument);
         }
 
+        // web_sys::console::log_1(&format!("{}:{} Calling {:?} with arguments ({:?})", file!(), line!(), self.frames.lock().current().unwrap(), arguments.iter().map(|arguments| arguments.to_string()).collect::<Vec<String>>()).into());
+
         let returned = native.apply(&arguments);
 
         let called_current_native = if returned.is_none() {
@@ -1231,18 +1234,45 @@ impl Process {
 
     pub fn stack_queued_frames_with_arguments(&self) {
         let mut frames = self.frames.lock();
-        let frames_with_arguments = frames.drain_queue();
+        let mut frames_with_arguments = frames.drain_queue();
 
-        for FrameWithArguments {
-            frame, arguments, ..
-        } in frames_with_arguments
+        while let Some(FrameWithArguments {
+            frame, mut arguments, ..
+        }) = frames_with_arguments.pop()
         {
             match self.stack_push_slice(&arguments) {
                 Ok(()) => {
                     frames.push(frame);
                 }
                 Err(_) => {
-                    unimplemented!("Stack over flow");
+                    let mut roots: Vec<Term> = Default::default();
+                    roots.extend(arguments.iter());
+                    roots.extend(frames_with_arguments.iter().flat_map(|frame_with_arguments| frame_with_arguments.arguments.iter()));
+
+                    match self.garbage_collect(roots.len(), &mut roots) {
+                        Ok(reductions) => {
+                            let mut updated_arguments = roots.drain(..);
+                            self.run_reductions.fetch_add(reductions.try_into().unwrap(), Ordering::SeqCst);
+
+                            for argument in arguments.iter_mut() {
+                                *argument = updated_arguments.next().unwrap();
+                            }
+
+                            // write the updated roots back since we couldn't reference them directly in one roots slice.
+                            for frame_with_arguments in frames_with_arguments.iter_mut() {
+                                for argument in frame_with_arguments.arguments.iter_mut() {
+                                    *argument = updated_arguments.next().unwrap();
+                                }
+                            }
+
+                            // retry
+                            self.stack_push_slice(&arguments).expect("Could not push arguments to stack after successful GC");
+                            frames.push(frame);
+                        },
+                        Err(_) => {
+                            unimplemented!("Could not GC while stacking queued frames with arguments");
+                        }
+                    }
                 }
             }
         }
